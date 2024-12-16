@@ -1,0 +1,652 @@
+---
+title: "Untitled"
+author: "Matt Russell"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r}
+library(tidyverse)
+```
+
+```{r}
+
+read_fia <- function(file_dir, state_abbr, fia_table){
+  table <- read_csv(paste0(file_dir, paste0(state_abbr, fia_table))) 
+  return(table)
+}
+
+# Maine
+file_dir <- "C:/Users/matt/Documents/Arbor/Projects/FFCP/harvesting/data/v2/"
+state_abbr <- "ME"
+
+cond <- read_fia(file_dir = file_dir, state_abbr = state_abbr, fia_table = "_COND.csv")
+plot <- read_fia(file_dir = file_dir, state_abbr = state_abbr, fia_table = "_PLOT.csv")
+cond_harvest <- read_fia(file_dir = file_dir, state_abbr = state_abbr, fia_table = "_COND_HARVEST.csv")
+pop_stratum <- read_fia(file_dir = file_dir, state_abbr = state_abbr, fia_table = "_POP_STRATUM.csv")
+pop_plot_stratum_assgn <- read_fia(file_dir = file_dir, state_abbr = state_abbr, fia_table = "_POP_PLOT_STRATUM_ASSGN.csv")
+```
+
+```{r}
+state <- "Maine"
+RSCD <- 24
+EVALID <- 232201
+
+cut_variable <- "TRTCD"
+
+calculate_acres_evalidator <- function(cut_variable, RSCD, EVALID) {
+  acres <- pop_stratum %>%
+    inner_join(pop_plot_stratum_assgn, by = c("CN" = "STRATUM_CN")) %>%
+    inner_join(plot, by = c("PLT_CN" = "CN")) %>%
+    rename(c(COUNTYCD = COUNTYCD.y, 
+             PLOT = PLOT.y, 
+             INVYR = INVYR.y,
+             RSCD = RSCD.y,
+             EVALID = EVALID.y)) |> 
+    inner_join(cond, by = c("STATECD", "COUNTYCD", "PLOT", "INVYR"), 
+               relationship = "many-to-many") %>%
+    filter(RESERVCD == 0, SITECLCD %in% 1:6, COND_STATUS_CD == 1, 
+           !is.na(CONDPROP_UNADJ), RSCD == 24, EVALID == 232201) %>%
+    mutate(
+      GRP1 = case_when(
+        coalesce(!!sym(cut_variable), -1) == 0 ~ "`0001 No observable treatment",
+        coalesce(!!sym(cut_variable), -1) == 10 ~ "`0002 Cutting",
+        coalesce(!!sym(cut_variable), -1) == 20 ~ "`0003 Site preparation",
+        coalesce(!!sym(cut_variable), -1) == 30 ~ "`0004 Artificial regeneration",
+        coalesce(!!sym(cut_variable), -1) == 40 ~ "`0005 Natural regeneration",
+        coalesce(!!sym(cut_variable), -1) == 50 ~ "`0006 Other silvicultural treatment",
+        coalesce(!!sym(cut_variable), -1) == -1 ~ "`0007 Not available",
+        TRUE ~ "`0008 Other"
+      ),
+      ESTIMATED_VALUE = CONDPROP_UNADJ * case_when(
+        PROP_BASIS == 'MACR' ~ ADJ_FACTOR_MACR,
+        TRUE ~ ADJ_FACTOR_SUBP
+      )
+    ) %>%
+    mutate(cut_TRTCD = ifelse(GRP1 == "`0002 Cutting" , paste0("cut_", cut_variable), 
+                              paste0("not_cut_", cut_variable))) |> 
+    group_by(cut_TRTCD) %>%
+    summarize(acres = sum(ESTIMATED_VALUE * EXPNS, na.rm = TRUE))
+  
+  return(acres)
+}
+```
+
+```{r}
+acs_TRTCD1 <- calculate_acres_evalidator(cut_variable = "TRTCD1", RSCD = RSCD, EVALID = EVALID)  
+acs_TRTCD2 <- calculate_acres_evalidator(cut_variable = "TRTCD2", RSCD = RSCD, EVALID = EVALID)  
+acs_TRTCD3 <- calculate_acres_evalidator(cut_variable = "TRTCD3", RSCD = RSCD, EVALID = EVALID)  
+
+acres_EVALIDator<- rbind(acs_TRTCD1, acs_TRTCD2, acs_TRTCD3) |> 
+  pivot_wider(names_from = cut_TRTCD, values_from = acres) |> 
+  mutate(state = state,
+         harvest_def = "EVALIDator",
+         cut = cut_TRTCD1  + cut_TRTCD2 + cut_TRTCD3,
+         not_cut = not_cut_TRTCD1 - cut_TRTCD2 - cut_TRTCD3,
+         tbl_area = cut + not_cut,
+         prop_harvest = cut/not_cut) |> 
+  select(state, harvest_def, cut, not_cut, tbl_area, prop_harvest)
+acres_EVALIDator
+```
+
+########################
+
+```{r}
+calculate_acres_harvest <- function(cut_variable, RSCD, EVALID) {
+  acres <- pop_stratum %>%
+    inner_join(pop_plot_stratum_assgn, by = c("CN" = "STRATUM_CN")) %>%
+    inner_join(plot, by = c("PLT_CN" = "CN")) %>%
+    rename(c(COUNTYCD = COUNTYCD.y, 
+             PLOT = PLOT.y, 
+             INVYR = INVYR.y,
+             RSCD = RSCD.y,
+             EVALID = EVALID.y)) |> 
+    inner_join(cond_harvest, by = c("STATECD", "COUNTYCD", "PLOT", "INVYR"), 
+               relationship = "many-to-many") %>%
+    filter(RSCD == 24, EVALID == 232201) %>%
+    mutate(
+      GRP1 = case_when(
+      coalesce(!!sym(cut_variable), -1) == 1 ~ '`0002 Cutting',
+      coalesce(!!sym(cut_variable), -1) == 0 ~ '`0001 No cutting',
+      coalesce(!!sym(cut_variable), -1) == -1 ~ '`0003 Not available',
+      TRUE ~ '`0004 Other'
+    ),
+      ESTIMATED_VALUE = CONDPROP_UNADJ * case_when(
+        PROP_BASIS == 'MACR' ~ ADJ_FACTOR_MACR,
+        TRUE ~ ADJ_FACTOR_SUBP
+      )
+    ) %>%
+    mutate(cut_TRTCD = ifelse(GRP1 == "`0002 Cutting" , paste0("cut_", cut_variable), 
+                              paste0("not_cut_", cut_variable))) |> 
+    group_by(cut_TRTCD) %>%
+    summarize(acres = sum(ESTIMATED_VALUE * EXPNS, na.rm = TRUE))
+  
+  return(acres)
+}
+```
+
+```{r}
+cut_variable <- "TRTCD_new"
+acres_TRTCD_new <- calculate_acres_harvest(cut_variable = cut_variable, 
+                                           RSCD = RSCD, EVALID = EVALID)  
+acres_TRTCD_new
+
+acres_TRTCD_new <- acres_TRTCD_new |> 
+  pivot_wider(names_from = cut_TRTCD, values_from = acres) |> 
+  mutate(state = state,
+         harvest_def = cut_variable,
+         cut = cut_TRTCD_new,
+         not_cut = not_cut_TRTCD_new ,
+         tbl_area = cut + not_cut,
+         prop_harvest = cut/not_cut) |> 
+  select(state, harvest_def, cut, not_cut, tbl_area, prop_harvest)
+acres_TRTCD_new
+```
+
+```{r}
+cut_variable <- "BA_RED"
+acres_BA_RED <- calculate_acres_harvest(cut_variable = cut_variable, 
+                                           RSCD = RSCD, EVALID = EVALID)  
+acres_BA_RED
+
+acres_BA_RED <- acres_BA_RED |> 
+  pivot_wider(names_from = cut_TRTCD, values_from = acres) |> 
+  mutate(state = state,
+         harvest_def = cut_variable,
+         cut = cut_BA_RED,
+         not_cut = not_cut_BA_RED,
+         tbl_area = cut + not_cut,
+         prop_harvest = cut/not_cut) |> 
+  select(state, harvest_def, cut, not_cut, tbl_area, prop_harvest)
+acres_BA_RED
+```
+
+
+```{r}
+cut_variable <- "BA_RED_TREE"
+acres_BA_RED_TREE <- calculate_acres_harvest(cut_variable = cut_variable, 
+                                           RSCD = RSCD, EVALID = EVALID)  
+acres_BA_RED_TREE
+
+acres_BA_RED_TREE <- acres_BA_RED_TREE |> 
+  pivot_wider(names_from = cut_TRTCD, values_from = acres) |> 
+  mutate(state = state,
+         harvest_def = cut_variable,
+         cut = cut_BA_RED_TREE,
+         not_cut = not_cut_BA_RED_TREE,
+         tbl_area = cut + not_cut,
+         prop_harvest = cut/not_cut) |> 
+  select(state, harvest_def, cut, not_cut, tbl_area, prop_harvest)
+acres_BA_RED_TREE
+```
+
+```{r}
+cut_variable <- "RD_RED"
+acres_RD_RED <- calculate_acres_harvest(cut_variable = cut_variable, 
+                                           RSCD = RSCD, EVALID = EVALID)  
+acres_RD_RED
+
+acres_RD_RED <- acres_RD_RED |> 
+  pivot_wider(names_from = cut_TRTCD, values_from = acres) |> 
+  mutate(state = state,
+         harvest_def = cut_variable,
+         cut = cut_RD_RED,
+         not_cut = not_cut_RD_RED,
+         tbl_area = cut + not_cut,
+         prop_harvest = cut/not_cut) |> 
+  select(state, harvest_def, cut, not_cut, tbl_area, prop_harvest)
+acres_RD_RED
+```
+
+```{r}
+cut_variable <- "RD_RED_TREE"
+acres_RD_RED_TREE <- calculate_acres_harvest(cut_variable = cut_variable, 
+                                           RSCD = RSCD, EVALID = EVALID)  
+acres_RD_RED_TREE
+
+acres_RD_RED_TREE <- acres_RD_RED_TREE |> 
+  pivot_wider(names_from = cut_TRTCD, values_from = acres) |> 
+  mutate(state = state,
+         harvest_def = cut_variable,
+         cut = cut_RD_RED_TREE,
+         not_cut = not_cut_RD_RED_TREE,
+         tbl_area = cut + not_cut,
+         prop_harvest = cut/not_cut) |> 
+  select(state, harvest_def, cut, not_cut, tbl_area, prop_harvest)
+acres_RD_RED_TREE
+```
+
+
+```{r}
+cut_variable <- "TRTCD_BA_RED"
+acres_TRTCD_BA_RED <- calculate_acres_harvest(cut_variable = cut_variable, 
+                                           RSCD = RSCD, EVALID = EVALID)  
+acres_TRTCD_BA_RED
+
+acres_TRTCD_BA_RED <- acres_TRTCD_BA_RED |> 
+  pivot_wider(names_from = cut_TRTCD, values_from = acres) |> 
+  mutate(state = state,
+         harvest_def = cut_variable,
+         cut = cut_TRTCD_BA_RED,
+         not_cut = not_cut_TRTCD_BA_RED,
+         tbl_area = cut + not_cut,
+         prop_harvest = cut/not_cut) |> 
+  select(state, harvest_def, cut, not_cut, tbl_area, prop_harvest)
+acres_TRTCD_BA_RED
+```
+
+
+```{r}
+cut_variable <- "TRTCD_BA_RED_TREE"
+acres_TRTCD_BA_RED_TREE <- calculate_acres_harvest(cut_variable = cut_variable, 
+                                           RSCD = RSCD, EVALID = EVALID)  
+acres_TRTCD_BA_RED_TREE
+
+acres_TRTCD_BA_RED_TREE <- acres_TRTCD_BA_RED_TREE |> 
+  pivot_wider(names_from = cut_TRTCD, values_from = acres) |> 
+  mutate(state = state,
+         harvest_def = cut_variable,
+         cut = cut_TRTCD_BA_RED_TREE,
+         not_cut = not_cut_TRTCD_BA_RED_TREE,
+         tbl_area = cut + not_cut,
+         prop_harvest = cut/not_cut) |> 
+  select(state, harvest_def, cut, not_cut, tbl_area, prop_harvest)
+acres_TRTCD_BA_RED_TREE
+```
+
+
+
+```{r}
+cut_variable <- "TRTCD_RD_RED"
+acres_TRTCD_RD_RED <- calculate_acres_harvest(cut_variable = cut_variable, 
+                                           RSCD = RSCD, EVALID = EVALID)  
+acres_TRTCD_RD_RED
+
+acres_TRTCD_RD_RED <- acres_TRTCD_RD_RED |> 
+  pivot_wider(names_from = cut_TRTCD, values_from = acres) |> 
+  mutate(state = state,
+         harvest_def = cut_variable,
+         cut = cut_TRTCD_RD_RED,
+         not_cut = not_cut_TRTCD_RD_RED,
+         tbl_area = cut + not_cut,
+         prop_harvest = cut/not_cut) |> 
+  select(state, harvest_def, cut, not_cut, tbl_area, prop_harvest)
+acres_TRTCD_RD_RED
+```
+
+
+```{r}
+cut_variable <- "TRTCD_RD_RED_TREE"
+acres_TRTCD_RD_RED_TREE <- calculate_acres_harvest(cut_variable = cut_variable, 
+                                           RSCD = RSCD, EVALID = EVALID)  
+acres_TRTCD_RD_RED_TREE
+
+acres_TRTCD_RD_RED_TREE <- acres_TRTCD_RD_RED_TREE |> 
+  pivot_wider(names_from = cut_TRTCD, values_from = acres) |> 
+  mutate(state = state,
+         harvest_def = cut_variable,
+         cut = cut_TRTCD_RD_RED_TREE,
+         not_cut = not_cut_TRTCD_RD_RED_TREE,
+         tbl_area = cut + not_cut,
+         prop_harvest = cut/not_cut) |> 
+  select(state, harvest_def, cut, not_cut, tbl_area, prop_harvest)
+acres_TRTCD_RD_RED_TREE
+```
+
+```{r}
+acres_all <- rbind(acres_EVALIDator, acres_TRTCD_new, acres_BA_RED, acres_BA_RED_TREE,
+                   acres_RD_RED, acres_RD_RED_TREE, acres_TRTCD_BA_RED, acres_TRTCD_BA_RED_TREE,
+                   acres_TRTCD_RD_RED, acres_TRTCD_RD_RED_TREE) |> 
+  arrange(prop_harvest) |> 
+  mutate(cut_ha = cut*0.404686,
+         not_cut_ha = not_cut*0.404686,
+         tbl_area_ha = tbl_area*0.404686,
+         harvest_def_col = ifelse(harvest_def =="EVALIDator", 1, 0),
+         tree_type = "TREE PREV DIA") 
+acres_all
+```
+
+```{r}
+p_acres_harvest <- acres_all |> 
+  ggplot(aes(x = reorder(harvest_def, cut), y = cut_ha/1000, fill = factor(harvest_def_col))) +
+  geom_bar(stat = "identity", col = "black") +
+  labs(title = "Maine, 2018-2022",
+       x = "Harvest definition variable",
+       y = "Area harvested (1,000 ha)") +
+  scale_fill_brewer(palette = "Dark2") +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.position = "none") 
+p_acres_harvest
+```
+
+############
+
+```{r}
+
+read_fia <- function(file_dir, state_abbr, fia_table){
+  table <- read_csv(paste0(file_dir, paste0(state_abbr, fia_table))) 
+  return(table)
+}
+
+# Maine
+file_dir <- "C:/Users/matt/Documents/Arbor/Projects/FFCP/harvesting/data/v2/"
+state_abbr <- "ME"
+
+cond <- read_fia(file_dir = file_dir, state_abbr = state_abbr, fia_table = "_COND.csv")
+plot <- read_fia(file_dir = file_dir, state_abbr = state_abbr, fia_table = "_PLOT.csv")
+cond_harvest <- read_fia(file_dir = file_dir, state_abbr = state_abbr, fia_table = "_COND_HARVEST_MIDPT.csv")
+pop_stratum <- read_fia(file_dir = file_dir, state_abbr = state_abbr, fia_table = "_POP_STRATUM.csv")
+pop_plot_stratum_assgn <- read_fia(file_dir = file_dir, state_abbr = state_abbr, fia_table = "_POP_PLOT_STRATUM_ASSGN.csv")
+```
+
+```{r}
+state <- "Maine"
+RSCD <- 24
+EVALID <- 232201
+
+cut_variable <- "TRTCD"
+
+calculate_acres_evalidator <- function(cut_variable, RSCD, EVALID) {
+  acres <- pop_stratum %>%
+    inner_join(pop_plot_stratum_assgn, by = c("CN" = "STRATUM_CN")) %>%
+    inner_join(plot, by = c("PLT_CN" = "CN")) %>%
+    rename(c(COUNTYCD = COUNTYCD.y, 
+             PLOT = PLOT.y, 
+             INVYR = INVYR.y,
+             RSCD = RSCD.y,
+             EVALID = EVALID.y)) |> 
+    inner_join(cond, by = c("STATECD", "COUNTYCD", "PLOT", "INVYR"), 
+               relationship = "many-to-many") %>%
+    filter(RESERVCD == 0, SITECLCD %in% 1:6, COND_STATUS_CD == 1, 
+           !is.na(CONDPROP_UNADJ), RSCD == 24, EVALID == 232201) %>%
+    mutate(
+      GRP1 = case_when(
+        coalesce(!!sym(cut_variable), -1) == 0 ~ "`0001 No observable treatment",
+        coalesce(!!sym(cut_variable), -1) == 10 ~ "`0002 Cutting",
+        coalesce(!!sym(cut_variable), -1) == 20 ~ "`0003 Site preparation",
+        coalesce(!!sym(cut_variable), -1) == 30 ~ "`0004 Artificial regeneration",
+        coalesce(!!sym(cut_variable), -1) == 40 ~ "`0005 Natural regeneration",
+        coalesce(!!sym(cut_variable), -1) == 50 ~ "`0006 Other silvicultural treatment",
+        coalesce(!!sym(cut_variable), -1) == -1 ~ "`0007 Not available",
+        TRUE ~ "`0008 Other"
+      ),
+      ESTIMATED_VALUE = CONDPROP_UNADJ * case_when(
+        PROP_BASIS == 'MACR' ~ ADJ_FACTOR_MACR,
+        TRUE ~ ADJ_FACTOR_SUBP
+      )
+    ) %>%
+    mutate(cut_TRTCD = ifelse(GRP1 == "`0002 Cutting" , paste0("cut_", cut_variable), 
+                              paste0("not_cut_", cut_variable))) |> 
+    group_by(cut_TRTCD) %>%
+    summarize(acres = sum(ESTIMATED_VALUE * EXPNS, na.rm = TRUE))
+  
+  return(acres)
+}
+```
+
+```{r}
+acs_TRTCD1 <- calculate_acres_evalidator(cut_variable = "TRTCD1", RSCD = RSCD, EVALID = EVALID)  
+acs_TRTCD2 <- calculate_acres_evalidator(cut_variable = "TRTCD2", RSCD = RSCD, EVALID = EVALID)  
+acs_TRTCD3 <- calculate_acres_evalidator(cut_variable = "TRTCD3", RSCD = RSCD, EVALID = EVALID)  
+
+acres_EVALIDator<- rbind(acs_TRTCD1, acs_TRTCD2, acs_TRTCD3) |> 
+  pivot_wider(names_from = cut_TRTCD, values_from = acres) |> 
+  mutate(state = state,
+         harvest_def = "EVALIDator",
+         cut = cut_TRTCD1  + cut_TRTCD2 + cut_TRTCD3,
+         not_cut = not_cut_TRTCD1 - cut_TRTCD2 - cut_TRTCD3,
+         tbl_area = cut + not_cut,
+         prop_harvest = cut/not_cut) |> 
+  select(state, harvest_def, cut, not_cut, tbl_area, prop_harvest)
+acres_EVALIDator
+```
+
+########################
+
+```{r}
+calculate_acres_harvest <- function(cut_variable, RSCD, EVALID) {
+  acres <- pop_stratum %>%
+    inner_join(pop_plot_stratum_assgn, by = c("CN" = "STRATUM_CN")) %>%
+    inner_join(plot, by = c("PLT_CN" = "CN")) %>%
+    rename(c(COUNTYCD = COUNTYCD.y, 
+             PLOT = PLOT.y, 
+             INVYR = INVYR.y,
+             RSCD = RSCD.y,
+             EVALID = EVALID.y)) |> 
+    inner_join(cond_harvest, by = c("STATECD", "COUNTYCD", "PLOT", "INVYR"), 
+               relationship = "many-to-many") %>%
+    filter(RSCD == 24, EVALID == 232201) %>%
+    mutate(
+      GRP1 = case_when(
+      coalesce(!!sym(cut_variable), -1) == 1 ~ '`0002 Cutting',
+      coalesce(!!sym(cut_variable), -1) == 0 ~ '`0001 No cutting',
+      coalesce(!!sym(cut_variable), -1) == -1 ~ '`0003 Not available',
+      TRUE ~ '`0004 Other'
+    ),
+      ESTIMATED_VALUE = CONDPROP_UNADJ * case_when(
+        PROP_BASIS == 'MACR' ~ ADJ_FACTOR_MACR,
+        TRUE ~ ADJ_FACTOR_SUBP
+      )
+    ) %>%
+    mutate(cut_TRTCD = ifelse(GRP1 == "`0002 Cutting" , paste0("cut_", cut_variable), 
+                              paste0("not_cut_", cut_variable))) |> 
+    group_by(cut_TRTCD) %>%
+    summarize(acres = sum(ESTIMATED_VALUE * EXPNS, na.rm = TRUE))
+  
+  return(acres)
+}
+```
+
+```{r}
+cut_variable <- "TRTCD_new"
+acres_TRTCD_new <- calculate_acres_harvest(cut_variable = cut_variable, 
+                                           RSCD = RSCD, EVALID = EVALID)  
+acres_TRTCD_new
+
+acres_TRTCD_new <- acres_TRTCD_new |> 
+  pivot_wider(names_from = cut_TRTCD, values_from = acres) |> 
+  mutate(state = state,
+         harvest_def = cut_variable,
+         cut = cut_TRTCD_new,
+         not_cut = not_cut_TRTCD_new ,
+         tbl_area = cut + not_cut,
+         prop_harvest = cut/not_cut) |> 
+  select(state, harvest_def, cut, not_cut, tbl_area, prop_harvest)
+acres_TRTCD_new
+```
+
+```{r}
+cut_variable <- "BA_RED"
+acres_BA_RED <- calculate_acres_harvest(cut_variable = cut_variable, 
+                                           RSCD = RSCD, EVALID = EVALID)  
+acres_BA_RED
+
+acres_BA_RED <- acres_BA_RED |> 
+  pivot_wider(names_from = cut_TRTCD, values_from = acres) |> 
+  mutate(state = state,
+         harvest_def = cut_variable,
+         cut = cut_BA_RED,
+         not_cut = not_cut_BA_RED,
+         tbl_area = cut + not_cut,
+         prop_harvest = cut/not_cut) |> 
+  select(state, harvest_def, cut, not_cut, tbl_area, prop_harvest)
+acres_BA_RED
+```
+
+
+```{r}
+cut_variable <- "BA_RED_TREE"
+acres_BA_RED_TREE <- calculate_acres_harvest(cut_variable = cut_variable, 
+                                           RSCD = RSCD, EVALID = EVALID)  
+acres_BA_RED_TREE
+
+acres_BA_RED_TREE <- acres_BA_RED_TREE |> 
+  pivot_wider(names_from = cut_TRTCD, values_from = acres) |> 
+  mutate(state = state,
+         harvest_def = cut_variable,
+         cut = cut_BA_RED_TREE,
+         not_cut = not_cut_BA_RED_TREE,
+         tbl_area = cut + not_cut,
+         prop_harvest = cut/not_cut) |> 
+  select(state, harvest_def, cut, not_cut, tbl_area, prop_harvest)
+acres_BA_RED_TREE
+```
+
+```{r}
+cut_variable <- "RD_RED"
+acres_RD_RED <- calculate_acres_harvest(cut_variable = cut_variable, 
+                                           RSCD = RSCD, EVALID = EVALID)  
+acres_RD_RED
+
+acres_RD_RED <- acres_RD_RED |> 
+  pivot_wider(names_from = cut_TRTCD, values_from = acres) |> 
+  mutate(state = state,
+         harvest_def = cut_variable,
+         cut = cut_RD_RED,
+         not_cut = not_cut_RD_RED,
+         tbl_area = cut + not_cut,
+         prop_harvest = cut/not_cut) |> 
+  select(state, harvest_def, cut, not_cut, tbl_area, prop_harvest)
+acres_RD_RED
+```
+
+```{r}
+cut_variable <- "RD_RED_TREE"
+acres_RD_RED_TREE <- calculate_acres_harvest(cut_variable = cut_variable, 
+                                           RSCD = RSCD, EVALID = EVALID)  
+acres_RD_RED_TREE
+
+acres_RD_RED_TREE <- acres_RD_RED_TREE |> 
+  pivot_wider(names_from = cut_TRTCD, values_from = acres) |> 
+  mutate(state = state,
+         harvest_def = cut_variable,
+         cut = cut_RD_RED_TREE,
+         not_cut = not_cut_RD_RED_TREE,
+         tbl_area = cut + not_cut,
+         prop_harvest = cut/not_cut) |> 
+  select(state, harvest_def, cut, not_cut, tbl_area, prop_harvest)
+acres_RD_RED_TREE
+```
+
+
+```{r}
+cut_variable <- "TRTCD_BA_RED"
+acres_TRTCD_BA_RED <- calculate_acres_harvest(cut_variable = cut_variable, 
+                                           RSCD = RSCD, EVALID = EVALID)  
+acres_TRTCD_BA_RED
+
+acres_TRTCD_BA_RED <- acres_TRTCD_BA_RED |> 
+  pivot_wider(names_from = cut_TRTCD, values_from = acres) |> 
+  mutate(state = state,
+         harvest_def = cut_variable,
+         cut = cut_TRTCD_BA_RED,
+         not_cut = not_cut_TRTCD_BA_RED,
+         tbl_area = cut + not_cut,
+         prop_harvest = cut/not_cut) |> 
+  select(state, harvest_def, cut, not_cut, tbl_area, prop_harvest)
+acres_TRTCD_BA_RED
+```
+
+
+```{r}
+cut_variable <- "TRTCD_BA_RED_TREE"
+acres_TRTCD_BA_RED_TREE <- calculate_acres_harvest(cut_variable = cut_variable, 
+                                           RSCD = RSCD, EVALID = EVALID)  
+acres_TRTCD_BA_RED_TREE
+
+acres_TRTCD_BA_RED_TREE <- acres_TRTCD_BA_RED_TREE |> 
+  pivot_wider(names_from = cut_TRTCD, values_from = acres) |> 
+  mutate(state = state,
+         harvest_def = cut_variable,
+         cut = cut_TRTCD_BA_RED_TREE,
+         not_cut = not_cut_TRTCD_BA_RED_TREE,
+         tbl_area = cut + not_cut,
+         prop_harvest = cut/not_cut) |> 
+  select(state, harvest_def, cut, not_cut, tbl_area, prop_harvest)
+acres_TRTCD_BA_RED_TREE
+```
+
+
+
+```{r}
+cut_variable <- "TRTCD_RD_RED"
+acres_TRTCD_RD_RED <- calculate_acres_harvest(cut_variable = cut_variable, 
+                                           RSCD = RSCD, EVALID = EVALID)  
+acres_TRTCD_RD_RED
+
+acres_TRTCD_RD_RED <- acres_TRTCD_RD_RED |> 
+  pivot_wider(names_from = cut_TRTCD, values_from = acres) |> 
+  mutate(state = state,
+         harvest_def = cut_variable,
+         cut = cut_TRTCD_RD_RED,
+         not_cut = not_cut_TRTCD_RD_RED,
+         tbl_area = cut + not_cut,
+         prop_harvest = cut/not_cut) |> 
+  select(state, harvest_def, cut, not_cut, tbl_area, prop_harvest)
+acres_TRTCD_RD_RED
+```
+
+
+```{r}
+cut_variable <- "TRTCD_RD_RED_TREE"
+acres_TRTCD_RD_RED_TREE <- calculate_acres_harvest(cut_variable = cut_variable, 
+                                           RSCD = RSCD, EVALID = EVALID)  
+acres_TRTCD_RD_RED_TREE
+
+acres_TRTCD_RD_RED_TREE <- acres_TRTCD_RD_RED_TREE |> 
+  pivot_wider(names_from = cut_TRTCD, values_from = acres) |> 
+  mutate(state = state,
+         harvest_def = cut_variable,
+         cut = cut_TRTCD_RD_RED_TREE,
+         not_cut = not_cut_TRTCD_RD_RED_TREE,
+         tbl_area = cut + not_cut,
+         prop_harvest = cut/not_cut) |> 
+  select(state, harvest_def, cut, not_cut, tbl_area, prop_harvest)
+acres_TRTCD_RD_RED_TREE
+```
+
+```{r}
+acres_all_midpt <- rbind(acres_EVALIDator, acres_TRTCD_new, acres_BA_RED, acres_BA_RED_TREE,
+                   acres_RD_RED, acres_RD_RED_TREE, acres_TRTCD_BA_RED, acres_TRTCD_BA_RED_TREE,
+                   acres_TRTCD_RD_RED, acres_TRTCD_RD_RED_TREE) |> 
+  arrange(prop_harvest) |> 
+  mutate(cut_ha = cut*0.404686,
+         not_cut_ha = not_cut*0.404686,
+         tbl_area_ha = tbl_area*0.404686,
+         harvest_def_col = ifelse(harvest_def =="EVALIDator", 1, 0),
+         tree_type = "GRM MIDPT DIA") 
+acres_all_midpt
+```
+
+```{r}
+
+acres_all2 <- rbind(acres_all, acres_all_midpt) 
+
+p_acres_harvest2 <- acres_all2 |> 
+  ggplot(aes(x = reorder(harvest_def, cut), y = cut_ha/1000, fill = factor(tree_type))) +
+  geom_bar(stat = "identity", position = "dodge", col = "black") +
+  labs(title = "Maine, 2018-2022",
+       x = "Harvest definition variable",
+       y = "Area harvested (1,000 ha)") +
+  scale_fill_brewer(palette = "Dark2") +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) 
+p_acres_harvest2
+
+acres_diff <- acres_all2 |> 
+  select(state, harvest_def, cut_ha, tree_type) |> 
+  pivot_wider(names_from = tree_type, values_from = cut_ha) |> 
+  mutate(has_diff = `GRM MIDPT DIA` - `TREE PREV DIA`,
+         acs_diff = has_diff/0.404686)
+acres_diff
+
+ggsave(plot = p_acres_harvest, "C:/Users/matt/Documents/Arbor/Projects/FFCP/harvesting/analysis/v2/figs/acres_harvest.png", 
+        width = 10, height = 6, dpi = 300)
+
+ggsave(plot = p_acres_harvest2, "C:/Users/matt/Documents/Arbor/Projects/FFCP/harvesting/analysis/v2/figs/acres_diff.png", 
+        width = 10, height = 6, dpi = 300)
+```
+
+
+

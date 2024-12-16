@@ -1,0 +1,59 @@
+---
+title: "Run harvest algorithm"
+author: "Matt Russell"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+Install packages to use.
+
+```{r}
+library(tidyverse)
+library(knitr)
+
+# Here's the file that runs the code to produce stand-level values by region
+
+my_file <- "C:/Users/matt/Documents/Arbor/Projects/FFCP/harvesting/analysis/v2"
+
+run_calculate_harvest <- paste0(my_file, "/calculate_harvest.Rmd")
+```
+
+```{r}
+enter_cycles <- function(STATECD, prev_start, prev_end, recent_start, recent_end){
+  cycles <- tribble(
+    ~STATECD, ~prev_start, ~prev_end, ~recent_start, ~recent_end,
+    STATECD, prev_start, prev_end, recent_start, recent_end)
+  return(cycles)
+  }
+
+read_fia <- function(file_dir, state_abbr, fia_table){
+  table <- read_csv(paste0(file_dir, paste0(state_abbr, fia_table))) 
+  return(table)
+  }
+```
+
+```{r}
+file_dir <- "C:/Users/matt/Documents/Arbor/Projects/FFCP/harvesting/data/v2/"
+
+# Maine
+STATECD <- 23
+state <- "Maine" 
+state_abbr <- "ME"
+prev_start <- 2013 
+prev_end <- 2017 
+recent_start <- 2018 
+recent_end <- 2022
+
+cycles <- enter_cycles(STATECD = STATECD, 
+             prev_start = prev_start, 
+             prev_end = prev_end, 
+             recent_start = recent_start, 
+             recent_end = recent_end)
+
+cond <- read_fia(file_dir = file_dir, state_abbr = state_abbr, fia_table = "_COND.csv")
+plot <- read_fia(file_dir = file_dir, state_abbr = state_abbr, fia_table = "_PLOT.csv")
+tree <- read_fia(file_dir = file_dir, state_abbr = state_abbr, fia_table = "_TREE.csv")
+
+source(knitr::purl(run_calculate_harvest, quiet = T))
+```
+
