@@ -1,0 +1,27 @@
+---
+title: "Generate population-level estimates of timberland area harvested"
+author: "Matt Russell"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r}
+library(tidyverse)
+```
+
+```{r}
+file_dir <- "C:/my/file/dir/"
+
+run_calculate_pop_harvest <- paste0(file_dir, "/calculate_pop_harvest.Rmd")
+```
+
+```{r}
+# Maine
+state_abbr <- "ME"
+state <- "Maine"
+RSCD_state <- 24
+EVALID_state <- 232201
+
+source(knitr::purl(run_calculate_pop_harvest, quiet = T))
+```
+

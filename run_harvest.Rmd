@@ -1,30 +1,30 @@
 ---
-title: "Run harvest algorithm"
+title: "Evaluate definitions of timber harvest"
 author: "Matt Russell"
 date: "`r Sys.Date()`"
 output: html_document
 ---
 
-Install packages to use.
-
 ```{r}
 library(tidyverse)
 library(knitr)
 
-# Here's the file that runs the code to produce stand-level values by region
+# This is the file that calculate timberland area harvested
 
-my_file <- "C:/Users/matt/Documents/Arbor/Projects/FFCP/harvesting/analysis/v2"
-
-run_calculate_harvest <- paste0(my_file, "/calculate_harvest.Rmd")
+run_calculate_harvest <- "C:/my/file/dir/calculate_harvest.Rmd"
 ```
 
 ```{r}
-enter_cycles <- function(STATECD, prev_start, prev_end, recent_start, recent_end){
+# enter_cycles() adds the recent measurement years for each state
+
+enter_cycles <- function(STATECD, recent_start, recent_end){
   cycles <- tribble(
-    ~STATECD, ~prev_start, ~prev_end, ~recent_start, ~recent_end,
-    STATECD, prev_start, prev_end, recent_start, recent_end)
+    ~STATECD, ~recent_start, ~recent_end,
+    STATECD, recent_start, recent_end)
   return(cycles)
   }
+
+# read_fia() reads in the FIA data for each state
 
 read_fia <- function(file_dir, state_abbr, fia_table){
   table <- read_csv(paste0(file_dir, paste0(state_abbr, fia_table))) 
@@ -33,26 +33,22 @@ read_fia <- function(file_dir, state_abbr, fia_table){
 ```
 
 ```{r}
-file_dir <- "C:/Users/matt/Documents/Arbor/Projects/FFCP/harvesting/data/v2/"
+# file_dir is the file directory where FIA data reside
+
+file_dir <- "C:/my/file/dir/"
+```
+
+```{r}
+# Run the analysis for the state of Maine
 
 # Maine
-STATECD <- 23
-state <- "Maine" 
-state_abbr <- "ME"
-prev_start <- 2013 
-prev_end <- 2017 
-recent_start <- 2018 
-recent_end <- 2022
+STATECD <- 23         # state FIPS code
+state <- "Maine"      # state name
+state_abbr <- "ME"    # state abbreviation
+recent_start <- 2018  # recent measurement start year
+recent_end <- 2022    # recent measurement end year
 
-cycles <- enter_cycles(STATECD = STATECD, 
-             prev_start = prev_start, 
-             prev_end = prev_end, 
-             recent_start = recent_start, 
-             recent_end = recent_end)
-
-cond <- read_fia(file_dir = file_dir, state_abbr = state_abbr, fia_table = "_COND.csv")
-plot <- read_fia(file_dir = file_dir, state_abbr = state_abbr, fia_table = "_PLOT.csv")
-tree <- read_fia(file_dir = file_dir, state_abbr = state_abbr, fia_table = "_TREE.csv")
+# Run the run_calculate_harvest script:
 
 source(knitr::purl(run_calculate_harvest, quiet = T))
 ```

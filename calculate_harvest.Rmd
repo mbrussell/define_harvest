@@ -1,58 +1,79 @@
 ---
-title: "Calculate harvest rates and obtain output"
+title: "Evaluate definitions of timber harvest"
 author: "Matt Russell"
 date: "`r Sys.Date()`"
 output: html_document
 ---
 
 ```{r}
+# Read in the FIA data
+
+cycles <- enter_cycles(STATECD = STATECD, 
+             recent_start = recent_start, 
+             recent_end = recent_end)
+
+cond <- read_fia(file_dir = file_dir, state_abbr = state_abbr, fia_table = "_COND.csv")
+plot <- read_fia(file_dir = file_dir, state_abbr = state_abbr, fia_table = "_PLOT.csv")
+tree <- read_fia(file_dir = file_dir, state_abbr = state_abbr, fia_table = "_TREE.csv")
+tree_midpt <- read_fia(file_dir = file_dir, state_abbr = state_abbr, fia_table = "_TREE_GRM_MIDPT.csv") |> 
+  rename(DIA_MIDPT = DIA,
+         SPCD_MIDPT = SPCD,
+         STATUSCD_MIDPT = STATUSCD)
+
+tree <- inner_join(tree, tree_midpt, by = c("STATECD", "PREV_TRE_CN" = "TRE_CN")) |>
+    mutate(DIA_diff = DIA - DIA_MIDPT) |> 
+  select(STATECD, UNITCD, COUNTYCD, PLOT, SUBP, TREE, INVYR, STATUSCD, 
+         STATUSCD_MIDPT, DIA, DIA_MIDPT, DIA_diff, SPCD, SPCD_MIDPT, TPA_UNADJ, 
+         PREV_STATUS_CD, PREVDIA)
+```
+
+```{r}
+# Filter for only timberlands in the most recent measurement cycle
 cond_true <- cond |> 
-  filter(RESERVCD == 0 & SITECLCD %in% 1:6 & COND_STATUS_CD == 1 & !is.na(CONDPROP_UNADJ)) |>
+  filter(RESERVCD == 0 & SITECLCD %in% 1:6 & COND_STATUS_CD == 1 & 
+           !is.na(CONDPROP_UNADJ)) |>
   inner_join(cycles, by = "STATECD") |> 
   filter(INVYR >= recent_start & INVYR <= recent_end) |> 
-  select(STATECD, UNITCD, COUNTYCD, PLOT, INVYR, CONDID, COND_STATUS_CD, CONDPROP_UNADJ, PROP_BASIS)
+  select(STATECD, UNITCD, COUNTYCD, PLOT, INVYR, CONDID, COND_STATUS_CD, 
+         CONDPROP_UNADJ, PROP_BASIS)
   
 stand <- full_join(cond, plot, 
                    by = c("STATECD", "UNITCD", "COUNTYCD", "PLOT", "INVYR"))  |> 
-  filter(RESERVCD == 0 & SITECLCD %in% 1:6 & COND_STATUS_CD == 1 & !is.na(CONDPROP_UNADJ)) |>
+  filter(RESERVCD == 0 & SITECLCD %in% 1:6 & COND_STATUS_CD == 1 & 
+           !is.na(CONDPROP_UNADJ)) |>
   inner_join(cycles, by = "STATECD") |> 
-  filter(INVYR >= prev_start & INVYR <= recent_end)  
+  filter(INVYR >= recent_start & INVYR <= recent_end)  
 ```
 
-Filter plots to only include those that have occurred in the annual inventory 
-data collection period (FIA DB Users Guide Appendix J).
 
 ```{r}
+# Label dsturbed and treated stands
 stand <- stand  |>  
-  mutate(growth_cycle = ifelse(INVYR >= prev_start & INVYR <= prev_end, "PREV",
-                               ifelse(INVYR >= recent_start & INVYR <= recent_end, "RECENT", NA)),
-        DIST = ifelse(DSTRBCD1 > 0, "YES", "NO"),
+  mutate(DIST = ifelse(DSTRBCD1 > 0, "YES", "NO"),
         TRTCD = ifelse(TRTCD1 == 10 |
                          TRTCD2 == 10 |
                          TRTCD3 == 10, "TRTCD_CUT", "TRTCD_NOT_CUT"))
 ```
 
-Use tree level data set to determine plot-level metrics:
-Will need FIA REF_SPECIES table to calculate relative density based on 
-Ducey and Knapp equation.
-
 ```{r}
+# Read in  FIA REF_SPECIES table to calculate relative density based on 
+# Ducey and Knapp equation.
 tree <- tree |>  
   inner_join(cycles, by = "STATECD") |> 
-  filter(INVYR >= prev_start & INVYR <= recent_end)
+  filter(INVYR >= recent_start & INVYR <= recent_end)
 
-ref_spp <- read_csv('C:/Users/matt/Documents/Arbor/Projects/FFCP/harvesting/data/REF_SPECIES.csv') %>% 
+ref_spp <- read_csv('C:/my/file/dir/REF_SPECIES.csv') %>% 
   select(SPCD, WOOD_SPGR_MC12VOL_DRYWT)
 
 tree <- tree |> 
-  inner_join(ref_spp, by = "SPCD") |> 
-  inner_join(stand, by = c("STATECD", "UNITCD", "COUNTYCD", "PLOT", "INVYR"))
-
+  inner_join(ref_spp, by = "SPCD") 
 ```
 
 Calculate metrics:
 
 ```{r}
+# Use tree level data set to determine plot-level metrics:
+
 # Live trees
 tree_live <- tree %>% 
   filter(STATUSCD == 1) %>% 
@@ -77,14 +98,14 @@ tree_live_sum <- tree_live %>%
 # Removed trees
 tree_removed <- tree %>% 
   filter(STATUSCD == 3 & PREV_STATUS_CD == 1) %>% 
-  mutate(TPAREMV_UNADJ = ifelse(PREVDIA >= 5.0, 6.018046, 74.965282),
+  mutate(TPAREMV_UNADJ = ifelse(DIA_MIDPT >= 5.0, 6.018046, 74.965282),
          tpa_rem_part = TPAREMV_UNADJ,
-         tpa_rem_part_5 = ifelse(PREVDIA >= 5.0, TPAREMV_UNADJ, 0),
-         ba_rem_part = (0.00545415*PREVDIA^2)*TPAREMV_UNADJ,
-         ba_rem_part_5 = ifelse(PREVDIA >= 5.0, (0.00545415*PREVDIA^2)*TPAREMV_UNADJ, 0),
-         RD_rem_part = ifelse(PREVDIA >= 5.0,
+         tpa_rem_part_5 = ifelse(DIA_MIDPT >= 5.0, TPAREMV_UNADJ, 0),
+         ba_rem_part = (0.00545415*DIA_MIDPT^2)*TPAREMV_UNADJ,
+         ba_rem_part_5 = ifelse(DIA_MIDPT >= 5.0, (0.00545415*DIA_MIDPT^2)*TPAREMV_UNADJ, 0),
+         RD_rem_part = ifelse(DIA_MIDPT >= 5.0,
                           ((0.00015+(0.00218*WOOD_SPGR_MC12VOL_DRYWT))*
-                             (PREVDIA*2.54/10)**1.6)*2.4701, 0))
+                             (DIA_MIDPT*2.54/10)**1.6)*2.4701, 0))
 
 tree_removed_sum <- tree_removed %>% 
   group_by(STATECD, UNITCD, COUNTYCD, PLOT, INVYR) %>% 
@@ -99,88 +120,83 @@ tree_removed_sum <- tree_removed %>%
 tree_sum <- left_join(tree_live_sum, tree_removed_sum, 
                        by = c("STATECD", "UNITCD", "COUNTYCD", "PLOT", "INVYR"))
 
-stand <- inner_join(stand, tree_sum, by = c("STATECD", "UNITCD", "COUNTYCD", "PLOT", "INVYR")) %>% 
+# Select key variables
+stand <- left_join(stand, tree_sum, by = c("STATECD", "UNITCD", "COUNTYCD", "PLOT", "INVYR")) %>% 
   select(STATECD, UNITCD, COUNTYCD, PLOT, INVYR, RESERVCD, OWNCD, OWNGRPCD, COND_STATUS_CD ,
-         FORINDCD, ADFORCD, FORTYPCD, STDAGE, STDSZCD, SITECLCD, SICOND, SIBASE, SISP,
+         ADFORCD, FORTYPCD, STDAGE, STDSZCD, SITECLCD, SICOND, SIBASE, SISP,
          STDORGCD, STDORGSP, SLOPE, ASPECT, PHYSCLCD, GSSTKCD, ALSTKCD, DSTRBCD1, 
          DSTRBYR1, DSTRBCD2, DSTRBYR2, DSTRBCD3, DSTRBYR3, TRTCD, TRTCD1, TRTYR1, TRTCD2,
-         TRTYR2, TRTCD3, TRTYR3, WATERCD, LAT, LON, growth_cycle, CONDPROP_UNADJ, PROP_BASIS,
-         ELEV, ECOSUBCD, DIST, RDDISTCD, CONDID,
+         TRTYR2, TRTCD3, TRTYR3, WATERCD, LAT, LON, CONDPROP_UNADJ, PROP_BASIS,
+         ELEV, DIST, RDDISTCD, CONDID,
+         HARVEST_TYPE1_SRS, HARVEST_TYPE2_SRS, HARVEST_TYPE3_SRS,
          TPA, BA, RD, QMD,
          TPA_rem, BA_rem, BA_rem_5, RD_rem, QMD_rem)
 ```
 
-Create time1, time 2 data set. Variables with `_PREV` designation indicate 
-measurement at time 1:
 
 ```{r}
-stand_prev <- stand %>%
-  group_by(STATECD, UNITCD, COUNTYCD, PLOT) %>%
-  mutate(INVYR_PREV = lag(INVYR),
-         TRTCD_PREV = lag(TRTCD),
-         GSSTKCD_PREV = lag(GSSTKCD),
-         STDAGE_PREV = lag(STDAGE),
-         RESERVCD_PREV = lag(RESERVCD),
-         FORINDCD_PREV = lag(FORINDCD),
-         SITECLCD_PREV = lag(SITECLCD),
-         FORTYPCD_PREV = lag(FORTYPCD),
-         STDSZCD_PREV = lag(STDSZCD),
-         OWNCD_PREV = lag(OWNCD),
-         OWNGRPCD_PREV = lag(OWNGRPCD),
-         STDORGCD_PREV = lag(STDORGCD),
-         SICOND_PREV = lag(SICOND),
-         BA_PREV = lag(BA),
-         TPA_PREV = lag(TPA), 
-         RD_PREV = lag(RD),
-         QMD_PREV = lag(QMD),
-         TPA_rem_PREV = lag(TPA_rem), 
-         BA_rem_PREV = lag(BA_rem),
-         BA_rem_5_PREV = lag(BA_rem_5), 
-         RD_rem_PREV = lag(RD_rem), 
-         QMD_rem_PREV = lag(QMD_rem)) %>% 
-  
-  select(STATECD, UNITCD, COUNTYCD, PLOT, INVYR, INVYR_PREV, TRTCD_PREV,
-         GSSTKCD_PREV, STDAGE_PREV, RESERVCD_PREV, FORINDCD_PREV, SITECLCD_PREV,
-         SICOND_PREV, FORTYPCD_PREV, STDSZCD_PREV, OWNCD_PREV, COND_STATUS_CD ,
-         OWNGRPCD_PREV, STDORGCD_PREV, INVYR_PREV, BA_PREV, TPA_PREV, RD_PREV, 
-         QMD_PREV, CONDPROP_UNADJ, PROP_BASIS, CONDID,
-         TPA_rem_PREV, BA_rem_PREV, BA_rem_5_PREV, RD_rem_PREV, QMD_rem_PREV) %>% 
-  
-  arrange(STATECD, UNITCD, COUNTYCD, PLOT, INVYR)
+# Use tree level data set to determine plot-level metrics
+# for "previous" measurement (using midpoint diameter)
 
-stand <- inner_join(stand, stand_prev) 
+tree_live_prev <- tree %>% 
+  filter(STATUSCD_MIDPT == 1) %>% 
+  mutate(TPA_UNADJ_MIDPT = ifelse(DIA_MIDPT >= 5.0, 6.018046, 74.965282),
+         tpa_part = TPA_UNADJ_MIDPT,
+         tpa_part_5 = ifelse(DIA_MIDPT >= 5.0, TPA_UNADJ_MIDPT, 0),
+         ba_part = (0.00545415*DIA_MIDPT^2)*TPA_UNADJ_MIDPT,
+         ba_part_5 = ifelse(DIA_MIDPT >= 5.0, (0.00545415*DIA_MIDPT^2)*TPA_UNADJ_MIDPT, 0),
+         RD_part = ifelse(DIA_MIDPT >= 5.0,
+                          ((0.00015+(0.00218*WOOD_SPGR_MC12VOL_DRYWT))*
+                             (DIA_MIDPT*2.54/10)**1.6)*2.4701, 0))
+
+tree_live_prev_sum <- tree_live_prev %>% 
+  group_by(STATECD, UNITCD, COUNTYCD, PLOT, INVYR) %>% 
+  summarize(TPA_PREV = sum(tpa_part, na.rm = T),
+            BA_PREV = sum(ba_part, na.rm = T),
+            TPA_5_PREV = sum(tpa_part_5, na.rm = T),
+            BA_5_PREV = sum(ba_part_5, na.rm = T),
+            RD_PREV = sum(RD_part, na.rm = T)) %>% 
+  mutate(QMD_PREV = sqrt((BA_5_PREV/TPA_5_PREV)/(0.00545415))) %>%
+  mutate_at(vars(TPA_PREV, BA_PREV, RD_PREV, QMD_PREV), replace_na, 0)
+
+stand_prev <- tree_live_prev_sum
+
+stand <- left_join(stand, stand_prev) 
 ```
 
-Merge stand file to forest type and forest type group tables, obtained from
-the FIA reference tables:
-
 ```{r}
-REF_FOREST_TYPE <- read_csv('C:/Users/matt/Documents/Arbor/Projects/FFCP/harvesting/data/REF_FOREST_TYPE.csv')
-REF_FOREST_TYPE_GROUP <- read_csv('C:/Users/matt/Documents/Arbor/Projects/FFCP/harvesting/data/REF_FOREST_TYPE_GROUP.csv')
+# Merge stand file to forest type and forest type group tables
+
+REF_FOREST_TYPE <- read_csv('C:/my/file/dir//REF_FOREST_TYPE.csv')
+REF_FOREST_TYPE_GROUP <- read_csv('C:/my/file/dir//REF_FOREST_TYPE_GROUP.csv')
 
 forest_type <- REF_FOREST_TYPE %>% 
-  rename(FORTYPCD_PREV = VALUE,
-         FORTYPCD_NAME_PREV = MEANING,
-         FORTYPGRPCD_PREV = TYPGRPCD) %>% 
-  select(FORTYPCD_PREV, FORTYPCD_NAME_PREV, FORTYPGRPCD_PREV)
+  rename(FORTYPCD = VALUE,
+         FORTYPCD_NAME = MEANING,
+         FORTYPGRPCD = TYPGRPCD) %>% 
+  select(FORTYPCD, FORTYPCD_NAME, FORTYPGRPCD)
 
 forest_group <- REF_FOREST_TYPE_GROUP %>% 
-  rename(FORTYPGRPCD_NAME_PREV = MEANING,
-         FORTYPGRPCD_PREV = VALUE) %>% 
-    select(FORTYPGRPCD_PREV, FORTYPGRPCD_NAME_PREV)
+  rename(FORTYPGRPCD_NAME = MEANING,
+         FORTYPGRPCD = VALUE) %>% 
+    select(FORTYPGRPCD, FORTYPGRPCD_NAME)
 
-forest <- inner_join(forest_type, forest_group, by = "FORTYPGRPCD_PREV")
+forest <- inner_join(forest_type, forest_group, by = "FORTYPGRPCD")
 
-stand <- inner_join(stand, forest, by = "FORTYPCD_PREV") 
+stand <- inner_join(stand, forest, by = "FORTYPCD") 
 ```
 
-# Determine harvest amounts
 ```{r}
+# Determine different harvest definitions and intensity
+# (TRTCD_copy replicates EVALIDator output)
+
 stand <- stand |> 
-  filter(growth_cycle %in% c("RECENT")) |> 
-  mutate(# Approach 1 (TRTCD): Treatment code (TRTCD):
-         BA_change = ((BA_PREV - BA)/BA_PREV),
+  mutate(# Approach 0 (TRTCD_copy): Replicate EVALIDator numbers
          CUTTING_TRTCD_MAIN = ifelse(TRTCD == "TRTCD_CUT", "YES", "NO"),
+         TRTCD_copy = ifelse(CUTTING_TRTCD_MAIN %in% c("YES"), 1, 0),
+         
+         # Approach 1 (TRTCD_new): Treatment code (TRTCD_new):
+         BA_change = ((BA_PREV - BA)/BA_PREV),
          TRTCD_new = ifelse(CUTTING_TRTCD_MAIN %in% c("YES") & 
                                       DIST %in% c("NO"), 
                                 1, 0),
@@ -195,18 +211,17 @@ stand <- stand |>
                                       DIST %in% c("NO"), 1, 0),
          # Approach 4 (RD_RED_10): Relative density, stand level (CUTTING_RD_STAND):
          RD_change = RD_PREV - RD,
-         CUTTING_RD_MAIN = ifelse(RD_change >= 0.25, "YES", "NO"),
+         CUTTING_RD_MAIN = ifelse(RD_change >= 0.10, "YES", "NO"),
          RD_RED = ifelse(CUTTING_RD_MAIN %in% c("YES") & 
                                       DIST %in% c("NO"), 1, 0),
          
          # Approach 5 (RD_RED_TREE_10): Relative density, tree level (CUTTING_RD_TREE):
          RD_change_TREE = (RD_rem + RD) - RD,
-         CUTTING_RD_TREE_MAIN = ifelse(RD_change_TREE >= 0.25, "YES", "NO"),
+         CUTTING_RD_TREE_MAIN = ifelse(RD_change_TREE >= 0.10, "YES", "NO"),
          RD_RED_TREE = ifelse(CUTTING_RD_TREE_MAIN %in% c("YES") & 
                                       DIST %in% c("NO"), 1, 0),
          # Approach 6 (TRTCD + BA_RED_25): Basal area removed > 25% (CUTTING_BA_25_STAND) OR
-         TRTCD_BA_RED = ifelse(BA_RED == 1|
-                                              (TRTCD_new == 1 & BA_change > 0),
+         TRTCD_BA_RED = ifelse(BA_RED == 1 | (TRTCD_new == 1 & BA_change > 0),
                                             1, 0),
          # Approach 7 (TRTCD + BA_RED_TREE): 
          TRTCD_BA_RED_TREE = ifelse(BA_RED_TREE == 1 |
@@ -219,11 +234,21 @@ stand <- stand |>
          # Approach 9 (TRTCD + RD_RED_TREE): 
          TRTCD_RD_RED_TREE = ifelse(RD_RED_TREE == 1 |
                                              (TRTCD_new == 1 & BA_change > 0),
-                                            1, 0)
-         ) |> 
-  select(STATECD, UNITCD, COUNTYCD, PLOT, INVYR, CONDID, 
-         TRTCD_new, BA_RED, BA_RED_TREE, RD_RED, RD_RED_TREE,
-         TRTCD_BA_RED, TRTCD_BA_RED_TREE, TRTCD_RD_RED, TRTCD_RD_RED_TREE)
+                                            1, 0),
+         # INTENSITY
+          BA_REMOVED = ifelse(CUTTING_TRTCD_MAIN %in% c("YES"), (BA_PREV - BA)*0.229568411 , 0),
+          BA_REMOVED_PCT = ifelse(CUTTING_TRTCD_MAIN %in% c("YES"), ((BA_PREV - BA)/BA_PREV)*100, 0),
+          HarvestType = ifelse(CUTTING_TRTCD_MAIN %in% c("YES") & BA_REMOVED_PCT >= 70, "Clearcut", "Thinning"),
+         ownership_type = ifelse(OWNGRPCD == 40, "Private", "Public"),
+         origin_type = ifelse(STDORGCD == 0, "Natural", "Planted")) |> 
+  select(STATECD, UNITCD, COUNTYCD, PLOT, INVYR, CONDID, BA, BA_PREV,
+         TRTCD_copy, TRTCD_new, BA_RED, BA_RED_TREE, RD_RED, RD_RED_TREE,
+         TRTCD_BA_RED, TRTCD_BA_RED_TREE, TRTCD_RD_RED, TRTCD_RD_RED_TREE,
+         HARVEST_TYPE1_SRS, HARVEST_TYPE2_SRS, HARVEST_TYPE3_SRS,
+         BA_REMOVED, BA_REMOVED_PCT, HarvestType,
+         FORTYPGRPCD_NAME, QMD, QMD_rem, QMD_PREV, ownership_type,
+         origin_type) |> 
+  filter(!(STATECD %in% c(40, 48) & UNITCD >= 3))
 
 
 cond_true2 <- cond_true |> 
@@ -231,8 +256,9 @@ cond_true2 <- cond_true |>
 ```
 
 ```{r}
-write_csv(cond_true2, paste0("C:/Users/matt/Documents/Arbor/Projects/FFCP/harvesting/data/v2/", 
+# Export new xx_COND_HARVEST file
+write_csv(cond_true2, paste0("C:/my/file/dir/", 
                              state_abbr, 
-                             "_COND_HARVEST_MIDPT.csv"))
+                             "_COND_HARVEST.csv"))
 ```
 
