@@ -17,10 +17,10 @@ run_calculate_pop_harvest <- paste0(file_dir, "/calculate_pop_harvest.Rmd")
 
 ```{r}
 # Maine
-state_abbr <- "ME"
-state <- "Maine"
-RSCD_state <- 24
-EVALID_state <- 232201
+state_abbr <- "ME" # state abbreviation
+state <- "Maine" # state name
+RSCD_state <- 24 # USFS region/station code
+EVALID_state <- 232201 # Evaluation ID
 
 source(knitr::purl(run_calculate_pop_harvest, quiet = T))
 ```
