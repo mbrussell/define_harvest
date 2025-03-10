@@ -1,5 +1,5 @@
 ---
-title: "Generate population-level estimates of timberland area harvested"
+title: "Run harvest algorithm by state"
 author: "Matt Russell"
 date: "`r Sys.Date()`"
 output: html_document
@@ -10,18 +10,354 @@ library(tidyverse)
 ```
 
 ```{r}
-file_dir <- "C:/my/file/dir/"
-
+file_dir <- "C:/file/dir/"
 run_calculate_pop_harvest <- paste0(file_dir, "/calculate_pop_harvest.Rmd")
 ```
 
 ```{r}
 # Maine
-state_abbr <- "ME" # state abbreviation
-state <- "Maine" # state name
-RSCD_state <- 24 # USFS region/station code
-EVALID_state <- 232201 # Evaluation ID
+state_abbr <- "ME"
+state <- "Maine"
+RSCD_state <- 24
+EVALID_state <- 232201
 
 source(knitr::purl(run_calculate_pop_harvest, quiet = T))
+```
+
+```{r}
+# New Hampshire
+state_abbr <- "NH"
+state <- "New Hampshire"
+RSCD_state <- 24
+EVALID_state <- 332301
+
+source(knitr::purl(run_calculate_pop_harvest, quiet = T))
+```
+
+```{r}
+# VT
+state_abbr <- "VT"
+state <- "Vermont"
+RSCD_state <- 24
+EVALID_state <- 502301
+
+source(knitr::purl(run_calculate_pop_harvest, quiet = T))
+```
+
+```{r}
+# CT
+state_abbr <- "CT"
+state <- "Connecticut"
+RSCD_state <- 24
+EVALID_state <- 92301
+
+source(knitr::purl(run_calculate_pop_harvest, quiet = T))
+```
+
+```{r}
+# DE
+state_abbr <- "DE"
+state <- "Delaware"
+RSCD_state <- 24
+EVALID_state <- 102301
+
+source(knitr::purl(run_calculate_pop_harvest, quiet = T))
+```
+
+```{r}
+# IL
+state_abbr <- "IL"
+state <- "Illinois"
+RSCD_state <- 23
+EVALID_state <- 172201
+
+source(knitr::purl(run_calculate_pop_harvest, quiet = T))
+```
+
+```{r}
+# IN
+state_abbr <- "IN"
+state <- "Indiana"
+RSCD_state <- 23
+EVALID_state <- 182201
+
+source(knitr::purl(run_calculate_pop_harvest, quiet = T))
+```
+
+```{r}
+# IA
+state_abbr <- "IA"
+state <- "Iowa"
+RSCD_state <- 23
+EVALID_state <- 192301
+
+source(knitr::purl(run_calculate_pop_harvest, quiet = T))
+```
+
+```{r}
+# MD
+state_abbr <- "MD"
+state <- "Maryland"
+RSCD_state <- 24
+EVALID_state <- 242101
+
+source(knitr::purl(run_calculate_pop_harvest, quiet = T))
+```
+
+```{r}
+# MA
+state_abbr <- "MA"
+state <- "Massachusetts"
+RSCD_state <- 24
+EVALID_state <- 252201
+
+source(knitr::purl(run_calculate_pop_harvest, quiet = T))
+```
+
+```{r}
+# MI
+state_abbr <- "MI"
+state <- "Michigan"
+RSCD_state <- 23
+EVALID_state <- 262201
+
+source(knitr::purl(run_calculate_pop_harvest, quiet = T))
+```
+
+
+```{r}
+# MN
+state_abbr <- "MN"
+state <- "Minnesota"
+RSCD_state <- 23
+EVALID_state <- 272201
+
+source(knitr::purl(run_calculate_pop_harvest, quiet = T))
+```
+
+
+```{r}
+# MO
+state_abbr <- "MO"
+state <- "Missouri"
+RSCD_state <- 23
+EVALID_state <- 292201
+
+source(knitr::purl(run_calculate_pop_harvest, quiet = T))
+```
+
+
+```{r}
+# NJ
+state_abbr <- "NJ"
+state <- "New Jersey"
+RSCD_state <- 24
+EVALID_state <- 342201
+
+source(knitr::purl(run_calculate_pop_harvest, quiet = T))
+```
+
+```{r}
+# NY
+state_abbr <- "NY"
+state <- "New York"
+RSCD_state <- 24
+EVALID_state <- 362201
+
+source(knitr::purl(run_calculate_pop_harvest, quiet = T))
+```
+
+```{r}
+# OH
+state_abbr <- "OH"
+state <- "Ohio"
+RSCD_state <- 24
+EVALID_state <- 392201
+
+source(knitr::purl(run_calculate_pop_harvest, quiet = T))
+```
+
+```{r}
+# PA
+state_abbr <- "PA"
+state <- "Pennsylvania"
+RSCD_state <- 24
+EVALID_state <- 422201
+
+source(knitr::purl(run_calculate_pop_harvest, quiet = T))
+```
+
+```{r}
+# RI
+state_abbr <- "RI"
+state <- "Rhode Island"
+RSCD_state <- 24
+EVALID_state <- 442201
+
+source(knitr::purl(run_calculate_pop_harvest, quiet = T))
+```
+
+```{r}
+# WV
+state_abbr <- "WV"
+state <- "West Virginia"
+RSCD_state <- 24
+EVALID_state <- 542201
+
+source(knitr::purl(run_calculate_pop_harvest, quiet = T))
+```
+
+```{r}
+# WI
+state_abbr <- "WI"
+state <- "Wisconsin"
+RSCD_state <- 23
+EVALID_state <- 552201
+
+source(knitr::purl(run_calculate_pop_harvest, quiet = T))
+```
+
+```{r}
+# AL
+state_abbr <- "AL"
+state <- "Alabama"
+RSCD_state <- 33
+EVALID_state <- 12301
+
+source(knitr::purl(run_calculate_pop_harvest, quiet = T))
+```
+
+```{r}
+# AR
+state_abbr <- "AR"
+state <- "Arkansas"
+RSCD_state <- 33
+EVALID_state <- 52301
+
+source(knitr::purl(run_calculate_pop_harvest, quiet = T))
+```
+
+```{r}
+# Florida
+state_abbr <- "FL"
+state <- "Florida"
+RSCD_state <- 33
+EVALID_state <- 122101
+
+source(knitr::purl(run_calculate_pop_harvest, quiet = T))
+```
+
+```{r}
+# GA
+state_abbr <- "GA"
+state <- "Georgia"
+RSCD_state <- 33
+EVALID_state <- 132201
+
+source(knitr::purl(run_calculate_pop_harvest, quiet = T))
+```
+
+```{r}
+# KY
+state_abbr <- "KY"
+state <- "Kentucky"
+RSCD_state <- 33
+EVALID_state <- 212001
+
+source(knitr::purl(run_calculate_pop_harvest, quiet = T))
+```
+
+```{r}
+# LA
+state_abbr <- "LA"
+state <- "Louisiana"
+RSCD_state <- 33
+EVALID_state <- 222201
+
+source(knitr::purl(run_calculate_pop_harvest, quiet = T))
+```
+
+```{r}
+# MS
+state_abbr <- "MS"
+state <- "Mississippi"
+RSCD_state <- 33
+EVALID_state <- 282201
+
+source(knitr::purl(run_calculate_pop_harvest, quiet = T))
+```
+
+```{r}
+# NC
+state_abbr <- "NC"
+state <- "North Carolina"
+RSCD_state <- 33
+EVALID_state <- 372301
+
+source(knitr::purl(run_calculate_pop_harvest, quiet = T))
+```
+
+```{r}
+# OK
+state_abbr <- "OK"
+state <- "Oklahoma"
+RSCD_state <- 33
+EVALID_state <- 402201
+
+source(knitr::purl(run_calculate_pop_harvest, quiet = T))
+```
+
+```{r}
+# SC
+state_abbr <- "SC"
+state <- "South Carolina"
+RSCD_state <- 33
+EVALID_state <- 452301
+
+source(knitr::purl(run_calculate_pop_harvest, quiet = T))
+```
+
+```{r}
+# TN
+state_abbr <- "TN"
+state <- "Tennessee"
+RSCD_state <- 33
+EVALID_state <- 472101
+
+source(knitr::purl(run_calculate_pop_harvest, quiet = T))
+```
+
+```{r}
+# TX
+state_abbr <- "TX"
+state <- "Texas"
+RSCD_state <- 33
+EVALID_state <- 482221
+
+source(knitr::purl(run_calculate_pop_harvest, quiet = T))
+```
+
+
+```{r}
+# VA
+state_abbr <- "VA"
+state <- "Virginia"
+RSCD_state <- 33
+EVALID_state <- 512301
+
+source(knitr::purl(run_calculate_pop_harvest, quiet = T))
+```
+
+
+```{r}
+# Bind all states
+acres_all <- bind_rows(acres_ME, acres_NH, acres_VT, acres_CT, acres_DE, 
+                       acres_IL, acres_IN, acres_IA, acres_MD, acres_MA, 
+                       acres_MI, acres_MN, acres_MO, acres_NJ, acres_NY, 
+                       acres_OH, acres_PA, acres_RI, acres_WV, acres_WI, 
+                       acres_AL, acres_AR, acres_FL, acres_GA, acres_KY, 
+                       acres_LA, acres_MS, acres_NC, acres_OK, acres_SC, 
+                       acres_TN, acres_TX, acres_VA)
+
 ```
 

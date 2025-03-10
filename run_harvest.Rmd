@@ -1,5 +1,5 @@
 ---
-title: "Evaluate definitions of timber harvest"
+title: "Run harvest algorithm"
 author: "Matt Russell"
 date: "`r Sys.Date()`"
 output: html_document
@@ -9,22 +9,20 @@ output: html_document
 library(tidyverse)
 library(knitr)
 
-# This is the file that calculate timberland area harvested
+# Here's the file that runs the code to produce stand-level values by region
 
-run_calculate_harvest <- "C:/my/file/dir/calculate_harvest.Rmd"
+my_file <- "C:/file/dir/"
+
+run_calculate_harvest <- paste0(my_file, "/calculate_harvest.Rmd")
 ```
 
 ```{r}
-# enter_cycles() adds the recent measurement years for each state
-
 enter_cycles <- function(STATECD, recent_start, recent_end){
   cycles <- tribble(
     ~STATECD, ~recent_start, ~recent_end,
     STATECD, recent_start, recent_end)
   return(cycles)
   }
-
-# read_fia() reads in the FIA data for each state
 
 read_fia <- function(file_dir, state_abbr, fia_table){
   table <- read_csv(paste0(file_dir, paste0(state_abbr, fia_table))) 
@@ -33,23 +31,369 @@ read_fia <- function(file_dir, state_abbr, fia_table){
 ```
 
 ```{r}
-# file_dir is the file directory where FIA data reside
-
-file_dir <- "C:/my/file/dir/"
+file_dir <- "C:/file/dir/"
 ```
 
 ```{r}
-# Run the analysis for the state of Maine
-
 # Maine
-STATECD <- 23         # state FIPS code
-state <- "Maine"      # state name
-state_abbr <- "ME"    # state abbreviation
-recent_start <- 2018  # recent measurement start year
-recent_end <- 2022    # recent measurement end year
+STATECD <- 23
+state <- "Maine" 
+state_abbr <- "ME"
+recent_start <- 2018 
+recent_end <- 2022
 
-# Run the run_calculate_harvest script:
+source(knitr::purl(run_calculate_harvest, quiet = T))
+```
 
+```{r}
+# New Hampshire
+STATECD <- 33
+state <- "New Hampshire" 
+state_abbr <- "NH"
+recent_start <- 2017 
+recent_end <- 2023
+ 
+source(knitr::purl(run_calculate_harvest, quiet = T))
+```
+
+```{r}
+# CT
+STATECD <- 9
+state <- "Connecticut" 
+state_abbr <- "CT"
+recent_start <- 2017 
+recent_end <- 2023
+ 
+source(knitr::purl(run_calculate_harvest, quiet = T))
+```
+
+```{r}
+# Delaware
+STATECD <- 10
+state <- "Delaware" 
+state_abbr <- "DE"
+recent_start <- 2017 
+recent_end <- 2023
+ 
+source(knitr::purl(run_calculate_harvest, quiet = T))
+```
+
+```{r}
+# Vermont
+STATECD <- 50
+state <- "Vermont" 
+state_abbr <- "VT"
+recent_start <- 2017 
+recent_end <- 2023
+ 
+source(knitr::purl(run_calculate_harvest, quiet = T))
+```
+
+```{r}
+# Illinois
+STATECD <- 17
+state <- "Illinois" 
+state_abbr <- "IL"
+recent_start <- 2016 
+recent_end <- 2022
+ 
+source(knitr::purl(run_calculate_harvest, quiet = T))
+```
+
+```{r}
+# Indiana
+STATECD <- 18
+state <- "Indiana" 
+state_abbr <- "IN"
+recent_start <- 2016 
+recent_end <- 2022
+ 
+source(knitr::purl(run_calculate_harvest, quiet = T))
+```
+
+```{r}
+# Iowa
+STATECD <- 19
+state <- "Iowa" 
+state_abbr <- "IA"
+recent_start <- 2017 
+recent_end <- 2023
+ 
+source(knitr::purl(run_calculate_harvest, quiet = T))
+```
+
+```{r}
+# Maryland
+STATECD <- 24
+state <- "Maryland" 
+state_abbr <- "MD"
+recent_start <- 2015 
+recent_end <- 2021
+ 
+source(knitr::purl(run_calculate_harvest, quiet = T))
+```
+
+```{r}
+# Massachusetts
+STATECD <- 25
+state <- "Massachusetts" 
+state_abbr <- "MA"
+recent_start <- 2016 
+recent_end <- 2022
+ 
+source(knitr::purl(run_calculate_harvest, quiet = T))
+```
+
+```{r}
+# Michigan
+STATECD <- 26
+state <- "Michigan" 
+state_abbr <- "MI"
+recent_start <- 2016 
+recent_end <- 2022
+ 
+source(knitr::purl(run_calculate_harvest, quiet = T))
+```
+
+```{r}
+# Minnesota
+STATECD <- 27
+state <- "Minnesota" 
+state_abbr <- "MN"
+recent_start <- 2018 
+recent_end <- 2022
+ 
+source(knitr::purl(run_calculate_harvest, quiet = T))
+```
+
+```{r}
+# Missouri
+STATECD <- 29
+state <- "Missouri" 
+state_abbr <- "MO"
+recent_start <- 2016 
+recent_end <- 2022
+ 
+source(knitr::purl(run_calculate_harvest, quiet = T))
+```
+
+```{r}
+# New Jersey
+STATECD <- 34
+state <- "New Jersey" 
+state_abbr <- "NJ"
+recent_start <- 2018 
+recent_end <- 2022
+ 
+source(knitr::purl(run_calculate_harvest, quiet = T))
+```
+
+```{r}
+# New York
+STATECD <- 36
+state <- "New York" 
+state_abbr <- "NY"
+recent_start <- 2016 
+recent_end <- 2022
+ 
+source(knitr::purl(run_calculate_harvest, quiet = T))
+```
+
+```{r}
+# Ohio
+STATECD <- 39
+state <- "Ohio" 
+state_abbr <- "OH"
+recent_start <- 2016 
+recent_end <- 2022
+ 
+source(knitr::purl(run_calculate_harvest, quiet = T))
+```
+
+```{r}
+# Pennsylvania
+STATECD <- 42
+state <- "Pennsylvania" 
+state_abbr <- "PA"
+recent_start <- 2016 
+recent_end <- 2022
+ 
+source(knitr::purl(run_calculate_harvest, quiet = T))
+```
+
+```{r}
+# Rhode Island
+STATECD <- 44
+state <- "Rhode Island" 
+state_abbr <- "RI"
+recent_start <- 2016 
+recent_end <- 2022
+ 
+source(knitr::purl(run_calculate_harvest, quiet = T))
+```
+
+```{r}
+# West Virginia
+STATECD <- 54
+state <- "West Virginia" 
+state_abbr <- "WV"
+recent_start <- 2016 
+recent_end <- 2022
+ 
+source(knitr::purl(run_calculate_harvest, quiet = T))
+```
+
+```{r}
+# Wisconsin
+STATECD <- 55
+state <- "Wisconsin" 
+state_abbr <- "WI"
+recent_start <- 2016 
+recent_end <- 2022
+ 
+source(knitr::purl(run_calculate_harvest, quiet = T))
+```
+
+```{r}
+# Alabama
+STATECD <- 1
+state <- "Alabama" 
+state_abbr <- "AL"
+recent_start <- 2015 
+recent_end <- 2023
+ 
+source(knitr::purl(run_calculate_harvest, quiet = T))
+```
+
+```{r}
+# Arkansas
+STATECD <- 5
+state <- "Arkansas" 
+state_abbr <- "AR"
+recent_start <- 2019 
+recent_end <- 2023
+ 
+source(knitr::purl(run_calculate_harvest, quiet = T))
+```
+
+```{r}
+# Florida
+STATECD <- 12
+state <- "Florida" 
+state_abbr <- "FL"
+recent_start <- 2014 
+recent_end <- 2021
+ 
+source(knitr::purl(run_calculate_harvest, quiet = T))
+```
+
+```{r}
+# Georgia
+STATECD <- 13
+state <- "Georgia" 
+state_abbr <- "GA"
+recent_start <- 2015 
+recent_end <- 2022
+ 
+source(knitr::purl(run_calculate_harvest, quiet = T))
+```
+
+```{r}
+# Kentucky
+STATECD <- 21
+state <- "Kentucky" 
+state_abbr <- "KY"
+recent_start <- 2014 
+recent_end <- 2020
+ 
+source(knitr::purl(run_calculate_harvest, quiet = T))
+```
+
+```{r}
+# Louisiana
+STATECD <- 22
+state <- "Louisiana" 
+state_abbr <- "LA"
+recent_start <- 2016 
+recent_end <- 2022
+ 
+source(knitr::purl(run_calculate_harvest, quiet = T))
+```
+
+```{r}
+# Mississippi
+STATECD <- 28
+state <- "Mississippi" 
+state_abbr <- "MS"
+recent_start <- 2017 
+recent_end <- 2022
+ 
+source(knitr::purl(run_calculate_harvest, quiet = T))
+```
+
+```{r}
+# North Carolina
+STATECD <- 37
+state <- "North Carolina" 
+state_abbr <- "NC"
+recent_start <- 2016 
+recent_end <- 2023
+ 
+source(knitr::purl(run_calculate_harvest, quiet = T))
+```
+
+```{r}
+# Oklahoma (east)
+STATECD <- 40
+state <- "Oklahoma" 
+state_abbr <- "OK"
+recent_start <- 2013 
+recent_end <- 2022
+ 
+source(knitr::purl(run_calculate_harvest, quiet = T))
+```
+
+```{r}
+# South Carolina
+STATECD <- 45
+state <- "South Carolina" 
+state_abbr <- "SC"
+recent_start <- 2017 
+recent_end <- 2023
+ 
+source(knitr::purl(run_calculate_harvest, quiet = T))
+```
+
+```{r}
+# Tennessee
+STATECD <- 47
+state <- "Tennessee" 
+state_abbr <- "TN"
+recent_start <- 2012 
+recent_end <- 2021
+ 
+source(knitr::purl(run_calculate_harvest, quiet = T))
+```
+
+```{r}
+# Texas (east)
+STATECD <- 48
+state <- "Texas" 
+state_abbr <- "TX"
+recent_start <- 2007 
+recent_end <- 2021
+ 
+source(knitr::purl(run_calculate_harvest, quiet = T))
+```
+
+```{r}
+# Virginia
+STATECD <- 51
+state <- "Virginia" 
+state_abbr <- "VA"
+recent_start <- 2017 
+recent_end <- 2023
+ 
 source(knitr::purl(run_calculate_harvest, quiet = T))
 ```
 

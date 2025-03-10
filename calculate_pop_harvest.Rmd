@@ -1,19 +1,15 @@
 ---
-title: "Generate population-level estimates of timberland area harvested"
+title: "Functions for population-level harvest"
 author: "Matt Russell"
 date: "`r Sys.Date()`"
 output: html_document
 ---
 
 ```{r}
-# Set file directory
-
-file_dir <- "C:/my/file/dir/"
+file_dir <- "C:/file/dir/"
 ```
 
 ```{r}
-# Function to read in FIA data table
-
 read_fia <- function(file_dir, state_abbr, fia_table){
   table <- read_csv(paste0(file_dir, paste0(state_abbr, fia_table))) 
   return(table)
@@ -21,20 +17,14 @@ read_fia <- function(file_dir, state_abbr, fia_table){
 ```
 
 ```{r}
-# Read in FIA data files
-
 cond <- read_fia(file_dir = file_dir, state_abbr = state_abbr, fia_table = "_COND.csv")
 plot <- read_fia(file_dir = file_dir, state_abbr = state_abbr, fia_table = "_PLOT.csv")
-cond_harvest <- read_fia(file_dir = file_dir, state_abbr = state_abbr, fia_table = "_COND_HARVEST.csv")
+cond_harvest <- read_fia(file_dir = file_dir, state_abbr = state_abbr, fia_table = "_COND_HARVEST_2.csv")
 pop_stratum <- read_fia(file_dir = file_dir, state_abbr = state_abbr, fia_table = "_POP_STRATUM.csv")
 pop_plot_stratum_assgn <- read_fia(file_dir = file_dir, state_abbr = state_abbr, fia_table = "_POP_PLOT_STRATUM_ASSGN.csv")
 ```
 
 ```{r}
-# calculate_acres_evalidator() determines timberland area harvested 
-# by replicating the EVALIDator algorithm (and the TRTCD1, TRTCD2, and TRTCD3 variables)
-
-
 cut_variable <- "TRTCD"
 
 calculate_acres_evalidator <- function(cut_variable, RSCD, EVALID) {
@@ -78,8 +68,7 @@ calculate_acres_evalidator <- function(cut_variable, RSCD, EVALID) {
 ```
 
 ```{r}
-# Run the calculate_acres_evalidator() function for the three TRTCD variables, then sum them
-
+# List the values for EVALID in the pop_stratum dataset 
 acs_TRTCD1 <- calculate_acres_evalidator(cut_variable = "TRTCD1", RSCD = RSCD_state, EVALID = EVALID_state)  
 acs_TRTCD2 <- calculate_acres_evalidator(cut_variable = "TRTCD2", RSCD = RSCD_state, EVALID = EVALID_state)  
 acs_TRTCD3 <- calculate_acres_evalidator(cut_variable = "TRTCD3", RSCD = RSCD_state, EVALID = EVALID_state)  
@@ -128,9 +117,6 @@ acres_EVALIDator
 ```
 
 ```{r}
-# calculate_acres_harvest() determines timberland area harvested for any other 
-# harvest definition
-
 calculate_acres_harvest <- function(cut_variable, RSCD, EVALID) {
   acres <- pop_stratum %>%
     inner_join(pop_plot_stratum_assgn, by = c("CN" = "STRATUM_CN")) %>%
@@ -167,9 +153,6 @@ calculate_acres_harvest <- function(cut_variable, RSCD, EVALID) {
 
 
 ```{r}
-# Variable 1: TRTCD: FIA code indicating a plot was treated by removing of 
-# one or more trees in a stand. Does not include stands that were disturbed.
-
 cut_variable <- "TRTCD_new"
 
 acres_TRTCD_new <- calculate_acres_harvest(cut_variable = cut_variable, 
@@ -192,9 +175,6 @@ acres_TRTCD_new
 ```
 
 ```{r}
-# Variable 2: BA_RED: Plot basal area in live trees was reduced by greater 
-# than 25% at remeasurement.
-
 cut_variable <- "BA_RED"
 acres_BA_RED <- calculate_acres_harvest(cut_variable = cut_variable, 
                                            RSCD = RSCD_state, EVALID = EVALID_state)  
@@ -228,8 +208,6 @@ acres_BA_RED
 
 
 ```{r}
-# Variable 3: BA_RED_TREE: Plot basal area in live trees was reduced by greater 
-# than 25%, as indicated by a STATUSCD = 3 in FIA data.
 cut_variable <- "BA_RED_TREE"
 acres_BA_RED_TREE <- calculate_acres_harvest(cut_variable = cut_variable, 
                                            RSCD = RSCD_state, EVALID = EVALID_state)  
@@ -261,8 +239,6 @@ acres_BA_RED_TREE
 ```
 
 ```{r}
-# Variable 4: RD_RED: Plot relative density in live trees was reduced by 
-# greater than 10% at remeasurement. 
 cut_variable <- "RD_RED"
 acres_RD_RED <- calculate_acres_harvest(cut_variable = cut_variable, 
                                            RSCD = RSCD_state, EVALID = EVALID_state)  
@@ -293,9 +269,6 @@ acres_RD_RED
 ```
 
 ```{r}
-# Variable 5: Plot relative density in live trees was reduced by 
-# greater than 10%, as indicated by a STATUSCD = 3 in FIA data.
-
 cut_variable <- "RD_RED_TREE"
 acres_RD_RED_TREE <- calculate_acres_harvest(cut_variable = cut_variable, 
                                            RSCD = RSCD_state, EVALID = EVALID_state)  
@@ -328,10 +301,6 @@ acres_RD_RED_TREE
 
 
 ```{r}
-# Variable 6: FIA code indicating a plot was treated by removing of one or more 
-# trees in a stand  (and plot basal area in live trees was reduced) OR plot 
-# basal area in live trees was reduced by greater than 25% at remeasurement. 
-
 cut_variable <- "TRTCD_BA_RED"
 acres_TRTCD_BA_RED <- calculate_acres_harvest(cut_variable = cut_variable, 
                                            RSCD = RSCD_state, EVALID = EVALID_state)  
@@ -364,12 +333,6 @@ acres_TRTCD_BA_RED
 
 
 ```{r}
-# Variable 7: FIA code indicating a plot was treated by removing of one or more 
-# trees in a stand (and plot basal area in live trees was reduced) OR plot basal 
-# area in live trees was reduced by greater than 25%, as indicated by 
-# a STATUSCD = 3 in FIA data.
-
-
 cut_variable <- "TRTCD_BA_RED_TREE"
 acres_TRTCD_BA_RED_TREE <- calculate_acres_harvest(cut_variable = cut_variable, 
                                            RSCD = RSCD_state, EVALID = EVALID_state)  
@@ -393,10 +356,6 @@ acres_TRTCD_BA_RED_TREE
 
 
 ```{r}
-# Variable 8: TRTCD_RD_RED: FIA code indicating a plot was treated by removing 
-# of one or more trees in a stand (and plot basal area in live trees was reduced) 
-# OR plot relative density in live trees was reduced by greater than 10% at remeasurement.
-
 cut_variable <- "TRTCD_RD_RED"
 acres_TRTCD_RD_RED <- calculate_acres_harvest(cut_variable = cut_variable, 
                                            RSCD = RSCD_state, EVALID = EVALID_state)  
@@ -429,11 +388,6 @@ acres_TRTCD_RD_RED
 
 
 ```{r}
-# Variable 9: FIA code indicating a plot was treated by removing of one or more 
-# trees in a stand (and plot basal area in live trees was reduced) OR plot 
-# relative density in live trees was reduced by greater than 10%, as indicated 
-# by a STATUSCD = 3 in FIA data
-
 cut_variable <- "TRTCD_RD_RED_TREE"
 acres_TRTCD_RD_RED_TREE <- calculate_acres_harvest(cut_variable = cut_variable, 
                                            RSCD = RSCD_state, EVALID = EVALID_state)  
@@ -455,7 +409,6 @@ acres_TRTCD_RD_RED_TREE
 ```
 
 ```{r}
-# Combine estimates of timberland area harvested for each harvest definition
 acres <- rbind(acres_EVALIDator, acres_TRTCD_new, acres_BA_RED, acres_BA_RED_TREE,
                    acres_RD_RED, acres_RD_RED_TREE, acres_TRTCD_BA_RED, acres_TRTCD_BA_RED_TREE,
                    acres_TRTCD_RD_RED, acres_TRTCD_RD_RED_TREE) |> 
