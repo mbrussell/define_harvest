@@ -15,13 +15,13 @@ The `run_harvest.Rmd` script calculates different harvest definitions for each s
 
 1. **TRTCD**:	FIA code indicating a plot was treated by removing of one or more trees in a stand. Does not include stands that were disturbed.
 2. **BA_RED**:	Plot basal area in live trees was reduced by greater than 25% at remeasurement.
-3. **BA_RED_TREE**:	Plot basal area in live trees was reduced by greater than 25%, as indicated by a STATUSCD = 3 in FIA data.
+3. **BA_RED_TREE**:	Plot basal area in live trees was reduced by greater than 25%, as indicated by an AGENTCD = 80 in FIA data.
 4. **RD_RED**:	Plot relative density in live trees was reduced by greater than 10% at remeasurement. 
-5. **RD_RED_TREE**:	Plot relative density in live trees was reduced by greater than 10%, as indicated by a STATUSCD = 3 in FIA data.
+5. **RD_RED_TREE**:	Plot relative density in live trees was reduced by greater than 10%, as indicated by an AGENTCD = 80 in FIA data.
 6. **TRTCD + BA_RED**:	FIA code indicating a plot was treated by removing of one or more trees in a stand  (and plot basal area in live trees was reduced) OR plot basal area in live trees was reduced by greater than 25% at remeasurement. Termed the “cutting and basal area reduction” variable.
-7. **TRTCD + BA_RED_TREE**:	FIA code indicating a plot was treated by removing of one or more trees in a stand (and plot basal area in live trees was reduced) OR plot basal area in live trees was reduced by greater than 25%, as indicated by a STATUSCD = 3 in FIA data.
+7. **TRTCD + BA_RED_TREE**:	FIA code indicating a plot was treated by removing of one or more trees in a stand (and plot basal area in live trees was reduced) OR plot basal area in live trees was reduced by greater than 25%, as indicated by an AGENTCD = 80 in FIA data.
 8. **TRTCD + RD_RED**:	FIA code indicating a plot was treated by removing of one or more trees in a stand (and plot basal area in live trees was reduced) OR plot relative density in live trees was reduced by greater than 10% at remeasurement.
-9. **TRTCD + RD_RED_TREE**:	FIA code indicating a plot was treated by removing of one or more trees in a stand (and plot basal area in live trees was reduced) OR plot relative density in live trees was reduced by greater than 10%, as indicated by a STATUSCD = 3 in FIA data.
+9. **TRTCD + RD_RED_TREE**:	FIA code indicating a plot was treated by removing of one or more trees in a stand (and plot basal area in live trees was reduced) OR plot relative density in live trees was reduced by greater than 10%, as indicated by an AGENTCD = 80 in FIA data.
 10. **FIA estimate (EVALIDator)**:	FIA estimate using TRTCD, including disturbed stands. FIA code indicating a plot was treated by removing one or more trees in a stand.
 
 Pre-harvest conditions are estimated from the tree's estimated midpoint diameter (from the TREE_GRM_MIDPT table). A new condition table named xx_COND_HARVEST is created, where population-level estimates of timberland harvests can be calculated.
